@@ -7,12 +7,8 @@
 
 #define SEED 0x12345678
 #define ARQUIVO_CEPS "Lista_de_CEPs.csv"
-#define TOTAL_CEPS_ARQUIVO 734914     // Mantemos o valor alto para segurança
+#define TOTAL_CEPS_ARQUIVO 734914
 #define TAXA_REDIMENSIONAMENTO 0.85f   
-
-// ---------------------------------------------------------------- //
-// --- ESTRUTURAS DE DADOS E TIPOS -------------------------------- //
-// ---------------------------------------------------------------- //
 
 typedef enum {
     HASH_SIMPLES, 
@@ -21,8 +17,8 @@ typedef enum {
 
 typedef struct {
     char cep[10];
-    char cidade[100]; // Aumentado para comportar nomes maiores
-    char estado[5];   // Aumentado para segurança
+    char cidade[100];
+    char estado[5];
     char chave_cep[6]; 
 } tcep;
 
@@ -36,9 +32,7 @@ typedef struct {
     float taxa_ocupacao_max;
 } thash;
 
-// ---------------------------------------------------------------- //
-// --- FUNÇÕES DE HASH -------------------------------------------- //
-// ---------------------------------------------------------------- //
+// funções de hash
 
 uint32_t hashf(const char *str, uint32_t h) {
     for (; *str; ++str) {
@@ -56,9 +50,7 @@ uint32_t hashf2(const char *str, uint32_t h) {
     return (h % 97) + 1;
 }
 
-// ---------------------------------------------------------------- //
-// --- FUNÇÕES DE MANIPULAÇÃO DA TABELA HASH ---------------------- //
-// ---------------------------------------------------------------- //
+// funções para manipulação da tabela hash
 
 int hash_insere(thash *h, void *bucket);
 
@@ -152,10 +144,6 @@ int hash_constroi(thash *h, int nbuckets, char *(*get_key)(void *), TipoHash tip
     return EXIT_SUCCESS;
 }
 
-// ---------------------------------------------------------------- //
-// --- FUNÇÕES ESPECÍFICAS DO CEP --------------------------------- //
-// ---------------------------------------------------------------- //
-
 char *get_key_cep(void *reg) {
     tcep *cep_data = (tcep *)reg;
     strncpy(cep_data->chave_cep, cep_data->cep, 5);
@@ -173,22 +161,15 @@ tcep *aloca_cep(const char *cep_str, const char *cidade_str, const char *estado_
     return novo_cep;
 }
 
-
-// #################################################################### //
-// ### INÍCIO DA SEÇÃO DE CÓDIGO CORRIGIDO/ADICIONADO ############### //
-// #################################################################### //
-
-// NOVA FUNÇÃO AUXILIAR: Remove aspas do início e fim de uma string
 char* trim_quotes(char* str) {
     if (str == NULL || *str != '"') {
         return str;
     }
     char* end = str + strlen(str) - 1;
-    *end = '\0'; // Remove a aspa final
-    return str + 1; // Retorna o ponteiro após a aspa inicial
+    *end = '\0';
+    return str + 1;
 }
 
-// FUNÇÃO DE LEITURA CORRIGIDA: Usa strtok para maior robustez
 int carregar_ceps(const char *nome_arquivo, tcep *ceps_vetor[]) {
     FILE *f = fopen(nome_arquivo, "r");
     if (!f) {
@@ -196,26 +177,20 @@ int carregar_ceps(const char *nome_arquivo, tcep *ceps_vetor[]) {
         return 0;
     }
 
-    char linha[512]; // Aumentado para linhas mais longas
+    char linha[512];
     int count = 0;
 
-    // Pula a primeira linha (cabeçalho do CSV)
     fgets(linha, sizeof(linha), f);
 
-    // Lê cada linha e cria um registro tcep
     while (fgets(linha, sizeof(linha), f) && count < TOTAL_CEPS_ARQUIVO) {
-        // Remove o \n do final da linha lida pelo fgets
         linha[strcspn(linha, "\r\n")] = 0;
         
-        // Usa strtok para separar as colunas pela vírgula
         char* estado_str = strtok(linha, ",");
         char* cidade_str = strtok(NULL, ",");
-        strtok(NULL, ","); // Pula a 3ª coluna (Faixa de CEP)
+        strtok(NULL, ",");
         char* cep_str = strtok(NULL, ",");
         
-        // Verifica se todos os tokens foram lidos com sucesso
         if (estado_str && cidade_str && cep_str) {
-            // Remove as aspas de cada campo
             char *estado_final = trim_quotes(estado_str);
             char *cidade_final = trim_quotes(cidade_str);
             char *cep_final = trim_quotes(cep_str);
@@ -230,23 +205,14 @@ int carregar_ceps(const char *nome_arquivo, tcep *ceps_vetor[]) {
     fclose(f);
     return count;
 }
-// #################################################################### //
-// ### FIM DA SEÇÃO DE CÓDIGO CORRIGIDO/ADICIONADO ################## //
-// #################################################################### //
 
-
-// ---------------------------------------------------------------- //
-// --- FUNÇÕES DE TESTE PARA GPROF (ITEM 4) ----------------------- //
-// ---------------------------------------------------------------- //
-
-// Vetor global para armazenar os CEPs lidos do arquivo
 tcep *g_ceps_carregados[TOTAL_CEPS_ARQUIVO];
 int g_total_ceps_lidos = 0;
 
 void experimento_busca(float taxa, TipoHash tipo) {
     thash h;
     int n_buckets = 6100;
-    hash_constroi(&h, n_buckets, get_key_cep, tipo, 0.0f); // Sem redimensionamento
+    hash_constroi(&h, n_buckets, get_key_cep, tipo, 0.0f);
 
     int n_inserir = (int)(n_buckets * taxa);
     if (n_inserir > g_total_ceps_lidos) n_inserir = g_total_ceps_lidos;
@@ -302,10 +268,6 @@ void insere_todos(int buckets_iniciais, TipoHash tipo) {
 void insere6100() { insere_todos(6100, HASH_DUPLO); }
 void insere1000() { insere_todos(1000, HASH_DUPLO); }
 
-// ---------------------------------------------------------------- //
-// --- FUNÇÃO PRINCIPAL (MAIN) ------------------------------------ //
-// ---------------------------------------------------------------- //
-
 int main() {
     printf("Carregando base de dados de CEPs do arquivo '%s'...\n", ARQUIVO_CEPS);
     g_total_ceps_lidos = carregar_ceps(ARQUIVO_CEPS, g_ceps_carregados);
@@ -347,7 +309,6 @@ int main() {
     printf("... concluido.\n");
 
     printf("Executando Teste 4.2 (Overhead de Insercao)...\n");
-    // Reduzido para apenas um tipo para acelerar a demonstração
     insere_todos(6100, HASH_SIMPLES);
     insere_todos(1000, HASH_SIMPLES);
     printf("... concluido.\n");
